@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Palette Recolor Tool</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <p class="eyebrow">Image Recolor Utility</p>
+      <h1>Palette Recolor Tool</h1>
+      <p class="hero-copy">Upload an image, limit it to a custom palette, and export the recolored PNG.</p>
+    </header>
+
+    <section class="toolbar panel">
+      <div class="toolbar-group">
+        <input id="image-input" type="file" accept="image/*" hidden>
+        <button id="upload-button" type="button" class="button button-primary">Upload image</button>
+        <button id="recolor-button" type="button" class="button">Recolor image</button>
+        <button id="download-button" type="button" class="button" disabled>Download edited image</button>
+      </div>
+      <p id="status-message" class="status-message" aria-live="polite">Ready. Edit the palette and load an image.</p>
+    </section>
+
+    <section class="preview-grid">
+      <article class="panel preview-panel">
+        <div class="panel-heading">
+          <h2>Original image</h2>
+        </div>
+        <div class="preview-stage">
+          <canvas id="original-canvas" class="preview-canvas" aria-label="Original image preview"></canvas>
+          <p id="original-placeholder" class="preview-placeholder">No image loaded</p>
+        </div>
+      </article>
+
+      <article class="panel preview-panel">
+        <div class="panel-heading">
+          <h2>Recolored image</h2>
+        </div>
+        <div class="preview-stage">
+          <canvas id="edited-canvas" class="preview-canvas" aria-label="Recolored image preview"></canvas>
+          <p id="edited-placeholder" class="preview-placeholder">No image loaded</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel controls-grid">
+      <article class="control-block">
+        <div class="panel-heading">
+          <h2>Palette input</h2>
+          <p>Accepted separators: comma, space, or new line.</p>
+        </div>
+        <label class="sr-only" for="palette-input">Palette colors</label>
+        <textarea id="palette-input" rows="8" spellcheck="false">ffffff, 000000</textarea>
+        <p id="palette-feedback" class="helper-text" aria-live="polite">2 valid colors detected.</p>
+      </article>
+
+      <article class="control-block">
+        <div class="panel-heading">
+          <h2>Recognized palette</h2>
+          <p>Only valid 6-digit hex colors are used.</p>
+        </div>
+        <div id="recognized-colors" class="swatch-list" aria-live="polite"></div>
+      </article>
+
+      <article class="control-block">
+        <div class="panel-heading">
+          <h2>Colors used in result</h2>
+          <p>Updated after each recolor.</p>
+        </div>
+        <div id="used-colors" class="swatch-list muted"></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
