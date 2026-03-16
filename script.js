@@ -321,6 +321,13 @@ function getOrderedOffset(x, y, matrix, strength) {
   return normalized * strength * 160;
 }
 
+function getScaledOrderedOffset(x, y, matrix, strength, cellSize) {
+  const safeCellSize = Math.max(1, cellSize);
+  const scaledX = Math.floor(x / safeCellSize);
+  const scaledY = Math.floor(y / safeCellSize);
+  return getOrderedOffset(scaledX, scaledY, matrix, strength);
+}
+
 function waitForNextPaint() {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
@@ -691,7 +698,13 @@ function applyHybridMode(context) {
             continue;
           }
 
-          const offset = getOrderedOffset(pixelX, pixelY, matrix, context.ditherStrength);
+          const offset = getScaledOrderedOffset(
+            pixelX,
+            pixelY,
+            matrix,
+            context.ditherStrength,
+            context.pixelSize
+          );
           const blendedRed = averageRed * 0.7 + sourceData[index] * 0.3 + offset;
           const blendedGreen = averageGreen * 0.7 + sourceData[index + 1] * 0.3 + offset;
           const blendedBlue = averageBlue * 0.7 + sourceData[index + 2] * 0.3 + offset;
