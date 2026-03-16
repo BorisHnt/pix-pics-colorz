@@ -686,6 +686,21 @@ function applyHybridMode(context) {
       const averageGreen = totalGreen / count;
       const averageBlue = totalBlue / count;
       const averageAlpha = Math.round(totalAlpha / count);
+      const offset = getScaledOrderedOffset(
+        startX,
+        startY,
+        matrix,
+        context.ditherStrength,
+        context.pixelSize
+      );
+      const blockColor = getClosestPaletteColor(
+        clampByte(averageRed + offset),
+        clampByte(averageGreen + offset),
+        clampByte(averageBlue + offset),
+        context.palette
+      );
+
+      addUsedColor(usedColorMap, blockColor);
 
       for (let offsetY = 0; offsetY < blockHeight; offsetY += 1) {
         for (let offsetX = 0; offsetX < blockWidth; offsetX += 1) {
@@ -698,31 +713,13 @@ function applyHybridMode(context) {
             continue;
           }
 
-          const offset = getScaledOrderedOffset(
-            pixelX,
-            pixelY,
-            matrix,
-            context.ditherStrength,
-            context.pixelSize
-          );
-          const blendedRed = averageRed * 0.7 + sourceData[index] * 0.3 + offset;
-          const blendedGreen = averageGreen * 0.7 + sourceData[index + 1] * 0.3 + offset;
-          const blendedBlue = averageBlue * 0.7 + sourceData[index + 2] * 0.3 + offset;
-          const color = getClosestPaletteColor(
-            clampByte(blendedRed),
-            clampByte(blendedGreen),
-            clampByte(blendedBlue),
-            context.palette
-          );
-
           setOutputPixel(
             outputData,
             index,
-            color,
+            blockColor,
             context.preserveTransparency ? alpha : averageAlpha,
             context.preserveTransparency
           );
-          addUsedColor(usedColorMap, color);
         }
       }
     }
