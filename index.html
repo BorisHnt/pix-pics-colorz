@@ -59,6 +59,57 @@
 
       <article class="control-block">
         <div class="panel-heading">
+          <h2>Rendering settings</h2>
+          <p>Switch algorithms and tune the result style.</p>
+        </div>
+        <div class="control-stack">
+          <label class="field">
+            <span class="field-label">Rendering mode</span>
+            <select id="rendering-mode">
+              <option value="nearest">Nearest color</option>
+              <option value="bayer4">Ordered dithering Bayer 4x4</option>
+              <option value="bayer8">Ordered dithering Bayer 8x8</option>
+              <option value="floyd">Floyd-Steinberg dithering</option>
+              <option value="atkinson">Atkinson dithering</option>
+              <option value="luminance">Luminance ramp mapping</option>
+              <option value="posterized">Posterized bands</option>
+              <option value="block">Block / pixel mode</option>
+              <option value="hybrid">Hybrid mode</option>
+            </select>
+          </label>
+
+          <p id="mode-description" class="mode-description">Direct palette mapping with no dithering. Clean, flat, and literal.</p>
+
+          <label id="dither-field" class="field">
+            <span class="field-label">Dither strength</span>
+            <div class="range-row">
+              <input id="dither-strength" type="range" min="0" max="100" value="70">
+              <span id="dither-strength-value" class="range-value">70%</span>
+            </div>
+          </label>
+
+          <label id="pixel-field" class="field">
+            <span class="field-label">Pixel size</span>
+            <div class="range-row">
+              <input id="pixel-size" type="range" min="2" max="16" value="6">
+              <span id="pixel-size-value" class="range-value">6px</span>
+            </div>
+          </label>
+
+          <label class="checkbox-field">
+            <input id="sort-palette" type="checkbox">
+            <span>Sort palette by luminance</span>
+          </label>
+
+          <label class="checkbox-field">
+            <input id="preserve-transparency" type="checkbox" checked>
+            <span>Preserve transparency</span>
+          </label>
+        </div>
+      </article>
+
+      <article class="control-block">
+        <div class="panel-heading">
           <h2>Recognized palette</h2>
           <p>Only valid 6-digit hex colors are used.</p>
         </div>
