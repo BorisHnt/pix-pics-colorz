@@ -28,9 +28,10 @@
       <article class="panel preview-panel">
         <div class="panel-heading">
           <h2>Original image</h2>
+          <p>Click to inspect at full size.</p>
         </div>
         <div class="preview-stage">
-          <canvas id="original-canvas" class="preview-canvas" aria-label="Original image preview"></canvas>
+          <canvas id="original-canvas" class="preview-canvas" aria-label="Original image preview" tabindex="0"></canvas>
           <p id="original-placeholder" class="preview-placeholder">No image loaded</p>
         </div>
       </article>
@@ -38,9 +39,10 @@
       <article class="panel preview-panel">
         <div class="panel-heading">
           <h2>Recolored image</h2>
+          <p>Click to inspect at full size.</p>
         </div>
         <div class="preview-stage">
-          <canvas id="edited-canvas" class="preview-canvas" aria-label="Recolored image preview"></canvas>
+          <canvas id="edited-canvas" class="preview-canvas" aria-label="Recolored image preview" tabindex="0"></canvas>
           <p id="edited-placeholder" class="preview-placeholder">No image loaded</p>
         </div>
       </article>
@@ -125,6 +127,21 @@
       </article>
     </section>
   </main>
+
+  <div id="viewer-modal" class="viewer-modal" hidden>
+    <div class="viewer-shell" role="dialog" aria-modal="true" aria-labelledby="viewer-title">
+      <div class="viewer-toolbar">
+        <div>
+          <h2 id="viewer-title">Full size preview</h2>
+          <p>Drag inside the image to move around. Press Escape to close.</p>
+        </div>
+        <button id="viewer-close" type="button" class="button">Close</button>
+      </div>
+      <div id="viewer-viewport" class="viewer-viewport">
+        <canvas id="viewer-canvas" class="viewer-canvas" aria-label="Full size image preview"></canvas>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

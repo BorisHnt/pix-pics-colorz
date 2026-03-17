@@ -21,9 +21,15 @@ const sortPaletteCheckbox = document.getElementById("sort-palette");
 const preserveTransparencyCheckbox = document.getElementById("preserve-transparency");
 const ditherField = document.getElementById("dither-field");
 const pixelField = document.getElementById("pixel-field");
+const viewerModal = document.getElementById("viewer-modal");
+const viewerCloseButton = document.getElementById("viewer-close");
+const viewerViewport = document.getElementById("viewer-viewport");
+const viewerCanvas = document.getElementById("viewer-canvas");
+const viewerTitle = document.getElementById("viewer-title");
 
 const originalContext = originalCanvas.getContext("2d", { willReadFrequently: true });
 const editedContext = editedCanvas.getContext("2d", { willReadFrequently: true });
+const viewerContext = viewerCanvas.getContext("2d");
 
 const BAYER_4X4 = [
   [0, 8, 2, 10],
@@ -111,6 +117,16 @@ const RENDER_MODES = {
 
 let currentImage = null;
 let currentObjectUrl = null;
+const viewerState = {
+  isOpen: false,
+  offsetX: 0,
+  offsetY: 0,
+  startOffsetX: 0,
+  startOffsetY: 0,
+  pointerStartX: 0,
+  pointerStartY: 0,
+  pointerId: null,
+};
 
 function parsePaletteInput(rawValue) {
   const entries = rawValue
@@ -334,6 +350,110 @@ function waitForNextPaint() {
       requestAnimationFrame(resolve);
     });
   });
+}
+
+function getViewerBounds() {
+  const viewportWidth = viewerViewport.clientWidth;
+  const viewportHeight = viewerViewport.clientHeight;
+  const centeredX = Math.round((viewportWidth - viewerCanvas.width) / 2);
+  const centeredY = Math.round((viewportHeight - viewerCanvas.height) / 2);
+
+  return {
+    minX: viewerCanvas.width > viewportWidth ? viewportWidth - viewerCanvas.width : centeredX,
+    maxX: viewerCanvas.width > viewportWidth ? 0 : centeredX,
+    minY: viewerCanvas.height > viewportHeight ? viewportHeight - viewerCanvas.height : centeredY,
+    maxY: viewerCanvas.height > viewportHeight ? 0 : centeredY,
+  };
+}
+
+function clampViewerOffsets(offsetX, offsetY) {
+  const bounds = getViewerBounds();
+
+  return {
+    offsetX: Math.min(bounds.maxX, Math.max(bounds.minX, offsetX)),
+    offsetY: Math.min(bounds.maxY, Math.max(bounds.minY, offsetY)),
+  };
+}
+
+function applyViewerTransform() {
+  viewerCanvas.style.transform = `translate(${viewerState.offsetX}px, ${viewerState.offsetY}px)`;
+}
+
+function centerViewerImage() {
+  const centeredX = Math.round((viewerViewport.clientWidth - viewerCanvas.width) / 2);
+  const centeredY = Math.round((viewerViewport.clientHeight - viewerCanvas.height) / 2);
+  const clamped = clampViewerOffsets(centeredX, centeredY);
+
+  viewerState.offsetX = clamped.offsetX;
+  viewerState.offsetY = clamped.offsetY;
+  applyViewerTransform();
+}
+
+function openViewer(sourceCanvas, label) {
+  if (!sourceCanvas.width || !sourceCanvas.height || !sourceCanvas.classList.contains("is-visible")) {
+    return;
+  }
+
+  viewerCanvas.width = sourceCanvas.width;
+  viewerCanvas.height = sourceCanvas.height;
+  viewerContext.clearRect(0, 0, viewerCanvas.width, viewerCanvas.height);
+  viewerContext.drawImage(sourceCanvas, 0, 0);
+  viewerTitle.textContent = `${label} full size preview`;
+  viewerModal.hidden = false;
+  document.body.classList.add("viewer-open");
+  viewerState.isOpen = true;
+
+  requestAnimationFrame(() => {
+    centerViewerImage();
+  });
+}
+
+function closeViewer() {
+  viewerModal.hidden = true;
+  document.body.classList.remove("viewer-open");
+  viewerViewport.classList.remove("is-dragging");
+  viewerState.isOpen = false;
+  viewerState.pointerId = null;
+}
+
+function startViewerDrag(event) {
+  if (!viewerState.isOpen || !viewerCanvas.width || !viewerCanvas.height) {
+    return;
+  }
+
+  viewerState.pointerId = event.pointerId;
+  viewerState.pointerStartX = event.clientX;
+  viewerState.pointerStartY = event.clientY;
+  viewerState.startOffsetX = viewerState.offsetX;
+  viewerState.startOffsetY = viewerState.offsetY;
+  viewerViewport.classList.add("is-dragging");
+  viewerCanvas.setPointerCapture(event.pointerId);
+}
+
+function moveViewerDrag(event) {
+  if (viewerState.pointerId !== event.pointerId) {
+    return;
+  }
+
+  const deltaX = event.clientX - viewerState.pointerStartX;
+  const deltaY = event.clientY - viewerState.pointerStartY;
+  const clamped = clampViewerOffsets(
+    viewerState.startOffsetX + deltaX,
+    viewerState.startOffsetY + deltaY
+  );
+
+  viewerState.offsetX = clamped.offsetX;
+  viewerState.offsetY = clamped.offsetY;
+  applyViewerTransform();
+}
+
+function stopViewerDrag(event) {
+  if (viewerState.pointerId !== event.pointerId) {
+    return;
+  }
+
+  viewerViewport.classList.remove("is-dragging");
+  viewerState.pointerId = null;
 }
 
 function buildRenderContext(validColors) {
@@ -860,6 +980,21 @@ function downloadEditedImage() {
   }, "image/png");
 }
 
+function handlePreviewActivation(canvas, label) {
+  canvas.addEventListener("click", () => {
+    openViewer(canvas, label);
+  });
+
+  canvas.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    openViewer(canvas, label);
+  });
+}
+
 uploadButton.addEventListener("click", () => {
   imageInput.click();
 });
@@ -927,6 +1062,33 @@ preserveTransparencyCheckbox.addEventListener("change", () => {
   }
 });
 
+viewerCloseButton.addEventListener("click", closeViewer);
+
+viewerModal.addEventListener("click", (event) => {
+  if (event.target === viewerModal) {
+    closeViewer();
+  }
+});
+
+viewerCanvas.addEventListener("pointerdown", startViewerDrag);
+viewerCanvas.addEventListener("pointermove", moveViewerDrag);
+viewerCanvas.addEventListener("pointerup", stopViewerDrag);
+viewerCanvas.addEventListener("pointercancel", stopViewerDrag);
+
+window.addEventListener("resize", () => {
+  if (viewerState.isOpen) {
+    centerViewerImage();
+  }
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && viewerState.isOpen) {
+    closeViewer();
+  }
+});
+
 updateControlValueLabels();
 updateModeUI();
 renderSwatches(usedColorsContainer, [], "No recolored output yet.");
+handlePreviewActivation(originalCanvas, "Original image");
+handlePreviewActivation(editedCanvas, "Recolored image");

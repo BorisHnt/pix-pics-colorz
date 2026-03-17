@@ -36,6 +36,10 @@ body {
   padding: 32px 18px;
 }
 
+body.viewer-open {
+  overflow: hidden;
+}
+
 .app-shell {
   width: min(1100px, 100%);
   margin: 0 auto;
@@ -183,6 +187,7 @@ body {
 
 .preview-canvas.is-visible {
   display: block;
+  cursor: zoom-in;
 }
 
 .preview-placeholder {
@@ -358,6 +363,78 @@ input[type="range"] {
   margin: 0;
 }
 
+.viewer-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(7, 9, 11, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.viewer-shell {
+  width: min(1200px, 100%);
+  height: min(90vh, 900px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(24, 27, 31, 0.98), rgba(16, 18, 21, 0.98));
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.viewer-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.viewer-toolbar h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.viewer-toolbar p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+}
+
+.viewer-viewport {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent),
+    #0f1215;
+}
+
+.viewer-viewport.is-dragging,
+.viewer-canvas {
+  cursor: grab;
+}
+
+.viewer-viewport.is-dragging .viewer-canvas {
+  cursor: grabbing;
+}
+
+.viewer-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  max-width: none;
+  max-height: none;
+  touch-action: none;
+  user-select: none;
+}
+
 @media (max-width: 960px) {
   .controls-grid {
     grid-template-columns: 1fr;
@@ -387,5 +464,18 @@ input[type="range"] {
 
   .button {
     flex: 1 1 180px;
+  }
+
+  .viewer-modal {
+    padding: 14px;
+  }
+
+  .viewer-shell {
+    height: min(92vh, 900px);
+  }
+
+  .viewer-toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
