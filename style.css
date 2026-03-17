@@ -374,6 +374,10 @@ input[type="range"] {
   backdrop-filter: blur(10px);
 }
 
+.viewer-modal[hidden] {
+  display: none !important;
+}
+
 .viewer-shell {
   width: min(1200px, 100%);
   height: min(90vh, 900px);
