@@ -65,20 +65,14 @@
         <div class="preset-section">
           <div class="preset-heading">
             <div>
-              <h3>Suggested palettes</h3>
-              <p>Load a preset, import a `.hex`, then tweak it if needed.</p>
+              <h3>Palette library</h3>
+              <p>Browse built-in palettes, see authors, and manage imported `.hex` files.</p>
             </div>
             <div class="preset-actions">
-              <button id="import-palette-button" type="button" class="button">Import .hex</button>
-              <a
-                class="button button-link"
-                href="https://lospec.com/palette-list"
-                target="_blank"
-                rel="noreferrer"
-              >Lospec palettes</a>
+              <button id="open-palette-library" type="button" class="button">Open library</button>
             </div>
           </div>
-          <div id="palette-presets" class="preset-list" aria-label="Suggested palettes"></div>
+          <div id="palette-library-summary" class="palette-library-summary" aria-live="polite"></div>
         </div>
       </article>
 
@@ -104,6 +98,7 @@
           </label>
 
           <p id="mode-description" class="mode-description">Direct palette mapping with no dithering. Clean, flat, and literal.</p>
+          <p id="mode-result-summary" class="mode-result-summary">Hybrid mode applied with 32 palette colors. 22 colors are visible in the result.</p>
 
           <label id="dither-field" class="field">
             <span class="field-label">Dither strength</span>
@@ -162,6 +157,47 @@
       </div>
       <div id="viewer-viewport" class="viewer-viewport">
         <canvas id="viewer-canvas" class="viewer-canvas" aria-label="Full size image preview"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="palette-library-modal" class="library-modal" hidden>
+    <div class="library-shell" role="dialog" aria-modal="true" aria-labelledby="palette-library-title">
+      <div class="library-toolbar">
+        <div>
+          <h2 id="palette-library-title">Palette library</h2>
+          <p>Built-in palettes include their authors. Imported `.hex` files are cached locally in this browser.</p>
+        </div>
+        <button id="palette-library-close" type="button" class="button">Close</button>
+      </div>
+
+      <div class="library-actions">
+        <button id="import-palette-button" type="button" class="button">Import .hex</button>
+        <button id="purge-palette-cache" type="button" class="button">Purge imported cache</button>
+        <a
+          class="button button-link"
+          href="https://lospec.com/palette-list"
+          target="_blank"
+          rel="noreferrer"
+        >Open Lospec palette list</a>
+      </div>
+
+      <div class="library-content">
+        <section class="library-section">
+          <div class="library-section-heading">
+            <h3>Built-in palettes</h3>
+            <p>Curated presets bundled with the tool.</p>
+          </div>
+          <div id="built-in-palettes" class="library-grid" aria-label="Built-in palettes"></div>
+        </section>
+
+        <section class="library-section">
+          <div class="library-section-heading">
+            <h3>Imported palettes</h3>
+            <p>Manage cached `.hex` files. You can delete them individually or purge the full cache.</p>
+          </div>
+          <div id="imported-palettes" class="library-grid" aria-label="Imported palettes"></div>
+        </section>
       </div>
     </div>
   </div>

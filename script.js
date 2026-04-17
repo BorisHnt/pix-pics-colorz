@@ -17,6 +17,7 @@ const originalPlaceholder = document.getElementById("original-placeholder");
 const editedPlaceholder = document.getElementById("edited-placeholder");
 const renderingModeSelect = document.getElementById("rendering-mode");
 const modeDescription = document.getElementById("mode-description");
+const modeResultSummary = document.getElementById("mode-result-summary");
 const ditherStrengthInput = document.getElementById("dither-strength");
 const ditherStrengthValue = document.getElementById("dither-strength-value");
 const pixelSizeInput = document.getElementById("pixel-size");
@@ -460,6 +461,10 @@ function setStatus(message, isError = false) {
   statusMessage.classList.toggle("is-error", isError);
 }
 
+function setModeResultSummary(message) {
+  modeResultSummary.textContent = message;
+}
+
 function setCanvasVisibility(canvas, placeholder, visible) {
   canvas.classList.toggle("is-visible", visible);
   placeholder.hidden = visible;
@@ -480,6 +485,7 @@ function clearEditedPreview() {
   setCanvasVisibility(editedCanvas, editedPlaceholder, false);
   renderSwatches(usedColorsContainer, [], "No recolored output yet.");
   downloadButton.disabled = true;
+  setModeResultSummary("No recolored output yet.");
 }
 
 function clampByte(value) {
@@ -1110,6 +1116,9 @@ async function recolorCurrentImage() {
 
   setStatus(
     `${mode.label} applied with ${renderContext.palette.length} palette color${renderContext.palette.length > 1 ? "s" : ""}. ${result.usedColors.length} color${result.usedColors.length > 1 ? "s are" : " is"} visible in the result.${invalidSummary}`
+  );
+  setModeResultSummary(
+    `${mode.label} applied with ${renderContext.palette.length} palette color${renderContext.palette.length > 1 ? "s" : ""}. ${result.usedColors.length} color${result.usedColors.length > 1 ? "s are" : " is"} visible in the result.`
   );
 }
 

@@ -430,6 +430,13 @@ textarea:focus {
   background: rgba(255, 255, 255, 0.02);
 }
 
+.mode-result-summary {
+  margin: -4px 0 0;
+  color: var(--accent);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 .range-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
