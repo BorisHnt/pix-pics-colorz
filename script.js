@@ -5,9 +5,13 @@ const autoRecolorCheckbox = document.getElementById("auto-recolor");
 const downloadButton = document.getElementById("download-button");
 const paletteFileInput = document.getElementById("palette-file-input");
 const importPaletteButton = document.getElementById("import-palette-button");
+const openPaletteLibraryButton = document.getElementById("open-palette-library");
+const purgePaletteCacheButton = document.getElementById("purge-palette-cache");
 const paletteInput = document.getElementById("palette-input");
 const paletteFeedback = document.getElementById("palette-feedback");
-const palettePresetsContainer = document.getElementById("palette-presets");
+const paletteLibrarySummary = document.getElementById("palette-library-summary");
+const builtInPalettesContainer = document.getElementById("built-in-palettes");
+const importedPalettesContainer = document.getElementById("imported-palettes");
 const recognizedColorsContainer = document.getElementById("recognized-colors");
 const usedColorsContainer = document.getElementById("used-colors");
 const statusMessage = document.getElementById("status-message");
@@ -31,6 +35,8 @@ const viewerCloseButton = document.getElementById("viewer-close");
 const viewerViewport = document.getElementById("viewer-viewport");
 const viewerCanvas = document.getElementById("viewer-canvas");
 const viewerTitle = document.getElementById("viewer-title");
+const paletteLibraryModal = document.getElementById("palette-library-modal");
+const paletteLibraryCloseButton = document.getElementById("palette-library-close");
 
 const originalContext = originalCanvas.getContext("2d", { willReadFrequently: true });
 const editedContext = editedCanvas.getContext("2d", { willReadFrequently: true });
@@ -54,55 +60,67 @@ const BAYER_8X8 = [
   [42, 26, 38, 22, 41, 25, 37, 21],
 ];
 
+const IMPORTED_PALETTES_STORAGE_KEY = "pix-pics-colorz.imported-palettes";
+
 const PALETTE_PRESETS = [
   {
     id: "onthehorizon",
     name: "ONTHEHORIZON",
+    author: "prime^^",
     colors: ["#fcb24d", "#e46131", "#b01528", "#771046", "#3e0b66", "#1e1645", "#1e1b26"],
   },
   {
     id: "oil-6",
     name: "Oil 6",
+    author: "GrafxKid",
     colors: ["#fbf5ef", "#f2d3ab", "#c69fa5", "#8b6d9c", "#494d7e", "#272744"],
   },
   {
     id: "twilight-5",
     name: "Twilight 5",
+    author: "Star",
     colors: ["#fbbbad", "#ee8695", "#4a7a96", "#333f58", "#292831"],
   },
   {
     id: "blessing",
     name: "Blessing",
+    author: "clarigariccus",
     colors: ["#74569b", "#96fbc7", "#f7ffae", "#ffb3cb", "#d8bfd8"],
   },
   {
     id: "mono",
     name: "Noir & blanc",
+    author: "Pix Pics Colorz",
     colors: ["#ffffff", "#000000"],
   },
   {
     id: "gameboy",
     name: "Game Boy",
+    author: "Pix Pics Colorz",
     colors: ["#9bbc0f", "#8bac0f", "#306230", "#0f380f"],
   },
   {
     id: "sunset",
     name: "Sunset motel",
+    author: "Pix Pics Colorz",
     colors: ["#fff1d0", "#ffb067", "#e85d75", "#7b2d5f", "#2f1833"],
   },
   {
     id: "candy",
     name: "Candy pop",
+    author: "Pix Pics Colorz",
     colors: ["#fdf2ff", "#ff9bd2", "#ff5d8f", "#8f3b76", "#2d1e3f"],
   },
   {
     id: "forest",
     name: "Forest ink",
+    author: "Pix Pics Colorz",
     colors: ["#edf6d6", "#a4c585", "#5f8f62", "#2f5d50", "#132a23"],
   },
   {
     id: "ocean",
     name: "Deep ocean",
+    author: "Pix Pics Colorz",
     colors: ["#eaf7ff", "#8dd7f7", "#3b82b4", "#24506a", "#0f2230"],
   },
 ];
@@ -176,6 +194,7 @@ const RENDER_MODES = {
 let currentImage = null;
 let currentObjectUrl = null;
 let activePresetId = null;
+let importedPalettes = [];
 const viewerState = {
   isOpen: false,
   offsetX: 0,
@@ -268,13 +287,64 @@ function paletteToText(colors) {
   return colors.map((color) => color.replace("#", "")).join(", ");
 }
 
+function updateGlobalModalState() {
+  document.body.classList.toggle(
+    "modal-open",
+    viewerState.isOpen || !paletteLibraryModal.hidden
+  );
+}
+
+function getAllPalettes() {
+  return [...PALETTE_PRESETS, ...importedPalettes];
+}
+
+function findPaletteById(paletteId) {
+  return getAllPalettes().find((palette) => palette.id === paletteId) || null;
+}
+
+function loadImportedPalettesFromCache() {
+  try {
+    const rawValue = window.localStorage.getItem(IMPORTED_PALETTES_STORAGE_KEY);
+
+    if (!rawValue) {
+      importedPalettes = [];
+      return;
+    }
+
+    const parsed = JSON.parse(rawValue);
+    importedPalettes = Array.isArray(parsed)
+      ? parsed.filter((entry) =>
+          entry &&
+          typeof entry.id === "string" &&
+          typeof entry.name === "string" &&
+          Array.isArray(entry.colors)
+        )
+      : [];
+  } catch (error) {
+    importedPalettes = [];
+  }
+}
+
+function saveImportedPalettesToCache() {
+  try {
+    window.localStorage.setItem(
+      IMPORTED_PALETTES_STORAGE_KEY,
+      JSON.stringify(importedPalettes)
+    );
+  } catch (error) {
+    setStatus("Unable to update the imported palette cache.", true);
+  }
+}
+
 function syncPresetSelection() {
-  if (!palettePresetsContainer) {
+  const cards = document.querySelectorAll(".palette-library-card");
+
+  if (!cards.length) {
     return;
   }
 
-  for (const button of palettePresetsContainer.querySelectorAll(".preset-button")) {
-    button.classList.toggle("is-active", button.dataset.presetId === activePresetId);
+  for (const card of cards) {
+    card.classList.toggle("is-active", card.dataset.paletteId === activePresetId);
   }
 }
 
@@ -286,54 +356,111 @@ function detectMatchingPreset(rawValue) {
     return null;
   }
 
-  const matchedPreset = PALETTE_PRESETS.find((preset) => preset.colors.join(",") === normalizedPalette);
+  const matchedPreset = getAllPalettes().find((preset) => preset.colors.join(",") === normalizedPalette);
   return matchedPreset ? matchedPreset.id : null;
 }
 
-function renderPalettePresets() {
-  if (!palettePresetsContainer) {
+function renderPaletteLibraryCard(container, palette, isImported = false) {
+  const card = document.createElement("article");
+  card.className = "palette-library-card";
+  card.dataset.paletteId = palette.id;
+
+  const header = document.createElement("div");
+  header.className = "palette-library-card-header";
+
+  const meta = document.createElement("div");
+  meta.className = "preset-meta";
+
+  const name = document.createElement("h4");
+  name.className = "preset-name";
+  name.textContent = palette.name;
+
+  const author = document.createElement("p");
+  author.className = "palette-author";
+  author.textContent = isImported
+    ? `${palette.colors.length} colors • Imported`
+    : `${palette.author} • ${palette.colors.length} colors`;
+
+  meta.append(name, author);
+
+  const actions = document.createElement("div");
+  actions.className = "palette-card-actions";
+
+  const applyButton = document.createElement("button");
+  applyButton.type = "button";
+  applyButton.className = "button";
+  applyButton.textContent = "Use";
+  applyButton.addEventListener("click", () => {
+    applyPalettePreset(palette.id);
+  });
+  actions.appendChild(applyButton);
+
+  if (isImported) {
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.addEventListener("click", () => {
+      deleteImportedPalette(palette.id);
+    });
+    actions.appendChild(deleteButton);
+  }
+
+  header.append(meta, actions);
+
+  const colorRow = document.createElement("div");
+  colorRow.className = "preset-colors";
+
+  for (const color of palette.colors) {
+    const swatch = document.createElement("span");
+    swatch.className = "preset-swatch";
+    swatch.style.backgroundColor = color;
+    swatch.title = color;
+    colorRow.appendChild(swatch);
+  }
+
+  card.append(header, colorRow);
+  container.appendChild(card);
+}
+
+function renderPaletteLibrarySummary() {
+  if (!paletteLibrarySummary) {
     return;
   }
 
-  palettePresetsContainer.textContent = "";
+  const activePalette = findPaletteById(activePresetId);
+  const activeLabel = activePalette
+    ? `Active palette: ${activePalette.name}${activePalette.author ? ` by ${activePalette.author}` : ""}.`
+    : "Active palette: custom or unsaved palette.";
 
-  for (const preset of PALETTE_PRESETS) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "button preset-button";
-    button.dataset.presetId = preset.id;
+  paletteLibrarySummary.textContent =
+    `${PALETTE_PRESETS.length} built-in palettes. ${importedPalettes.length} imported palette${importedPalettes.length > 1 ? "s" : ""} cached. ${activeLabel}`;
+}
 
-    const meta = document.createElement("span");
-    meta.className = "preset-meta";
-
-    const name = document.createElement("span");
-    name.className = "preset-name";
-    name.textContent = preset.name;
-
-    const count = document.createElement("span");
-    count.className = "field-label";
-    count.textContent = `${preset.colors.length} colors`;
-
-    meta.append(name, count);
-
-    const colorRow = document.createElement("span");
-    colorRow.className = "preset-colors";
-
-    for (const color of preset.colors) {
-      const swatch = document.createElement("span");
-      swatch.className = "preset-swatch";
-      swatch.style.backgroundColor = color;
-      swatch.title = color;
-      colorRow.appendChild(swatch);
-    }
-
-    button.append(meta, colorRow);
-    button.addEventListener("click", () => {
-      applyPalettePreset(preset.id);
-    });
-    palettePresetsContainer.appendChild(button);
+function renderPalettePresets() {
+  if (!builtInPalettesContainer || !importedPalettesContainer) {
+    return;
   }
 
+  builtInPalettesContainer.textContent = "";
+  importedPalettesContainer.textContent = "";
+
+  for (const preset of PALETTE_PRESETS) {
+    renderPaletteLibraryCard(builtInPalettesContainer, preset);
+  }
+
+  if (!importedPalettes.length) {
+    const emptyState = document.createElement("p");
+    emptyState.className = "swatch-empty";
+    emptyState.textContent = "No imported palettes cached yet.";
+    importedPalettesContainer.appendChild(emptyState);
+  } else {
+    for (const preset of importedPalettes) {
+      renderPaletteLibraryCard(importedPalettesContainer, preset, true);
+    }
+  }
+
+  renderPaletteLibrarySummary();
   syncPresetSelection();
 }
 
@@ -363,6 +490,7 @@ function updatePalettePreview() {
   const previewPalette = getPreviewPalette(validColors);
   activePresetId = invalidEntries.length ? null : detectMatchingPreset(paletteInput.value);
   syncPresetSelection();
+  renderPaletteLibrarySummary();
 
   renderSwatches(
     recognizedColorsContainer,
@@ -390,7 +518,7 @@ function updatePalettePreview() {
 }
 
 async function applyPalettePreset(presetId) {
-  const preset = PALETTE_PRESETS.find((entry) => entry.id === presetId);
+  const preset = findPaletteById(presetId);
 
   if (!preset) {
     return;
@@ -403,6 +531,18 @@ async function applyPalettePreset(presetId) {
     `Preset "${preset.name}" loaded. Upload an image or click recolor when ready.`,
     `Preset "${preset.name}" loaded. Auto recolor is refreshing the preview...`
   );
+}
+
+function openPaletteLibrary() {
+  paletteLibraryModal.hidden = false;
+  document.body.classList.add("palette-library-open");
+  updateGlobalModalState();
+}
+
+function closePaletteLibrary() {
+  paletteLibraryModal.hidden = true;
+  document.body.classList.remove("palette-library-open");
+  updateGlobalModalState();
 }
 
 async function handleAutoRecolorUpdate(manualMessage, autoMessage) {
@@ -448,12 +588,49 @@ async function importPaletteFile(file) {
     .filter(Boolean)
     .join("\n");
 
-  paletteInput.value = normalizedText;
-  updatePalettePreview();
-  await handleAutoRecolorUpdate(
-    `Palette imported from ${file.name}. Upload an image or click recolor when ready.`,
-    `Palette imported from ${file.name}. Auto recolor is refreshing the preview...`
-  );
+  const { validColors } = parsePaletteInput(normalizedText);
+
+  if (!validColors.length) {
+    setStatus("No valid 6-digit hex colors were found in this .hex file.", true);
+    return;
+  }
+
+  const importedPalette = {
+    id: `imported-${Date.now()}`,
+    name: file.name.replace(/\.[^.]+$/, "") || "Imported palette",
+    author: "Imported",
+    colors: validColors.map((color) => color.hex),
+  };
+
+  importedPalettes = [importedPalette, ...importedPalettes];
+  saveImportedPalettesToCache();
+  renderPalettePresets();
+
+  await applyPalettePreset(importedPalette.id);
+}
+
+function deleteImportedPalette(paletteId) {
+  importedPalettes = importedPalettes.filter((palette) => palette.id !== paletteId);
+
+  if (activePresetId === paletteId) {
+    activePresetId = detectMatchingPreset(paletteInput.value);
+  }
+
+  saveImportedPalettesToCache();
+  renderPalettePresets();
+  setStatus("Imported palette deleted from cache.");
+}
+
+function purgeImportedPaletteCache() {
+  importedPalettes = [];
+
+  if (activePresetId && !findPaletteById(activePresetId)) {
+    activePresetId = detectMatchingPreset(paletteInput.value);
+  }
+
+  saveImportedPalettesToCache();
+  renderPalettePresets();
+  setStatus("Imported palette cache purged.");
 }
 
 function setStatus(message, isError = false) {
@@ -608,6 +785,7 @@ function openViewer(sourceCanvas, label) {
   viewerModal.hidden = false;
   document.body.classList.add("viewer-open");
   viewerState.isOpen = true;
+  updateGlobalModalState();
 
   requestAnimationFrame(() => {
     centerViewerImage();
@@ -620,6 +798,7 @@ function closeViewer() {
   viewerViewport.classList.remove("is-dragging");
   viewerState.isOpen = false;
   viewerState.pointerId = null;
+  updateGlobalModalState();
 }
 
 function startViewerDrag(event) {
@@ -1208,6 +1387,10 @@ uploadButton.addEventListener("click", () => {
   imageInput.click();
 });
 
+openPaletteLibraryButton.addEventListener("click", () => {
+  openPaletteLibrary();
+});
+
 importPaletteButton.addEventListener("click", () => {
   paletteFileInput.click();
 });
@@ -1290,10 +1473,18 @@ autoRecolorCheckbox.addEventListener("change", () => {
 });
 
 viewerCloseButton.addEventListener("click", closeViewer);
+paletteLibraryCloseButton.addEventListener("click", closePaletteLibrary);
+purgePaletteCacheButton.addEventListener("click", purgeImportedPaletteCache);
 
 viewerModal.addEventListener("click", (event) => {
   if (event.target === viewerModal) {
     closeViewer();
+  }
+});
+
+paletteLibraryModal.addEventListener("click", (event) => {
+  if (event.target === paletteLibraryModal) {
+    closePaletteLibrary();
   }
 });
 
@@ -1311,11 +1502,17 @@ window.addEventListener("resize", () => {
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && viewerState.isOpen) {
     closeViewer();
+    return;
+  }
+
+  if (event.key === "Escape" && !paletteLibraryModal.hidden) {
+    closePaletteLibrary();
   }
 });
 
 updateControlValueLabels();
 renderingModeSelect.value = "hybrid";
+loadImportedPalettesFromCache();
 renderPalettePresets();
 updateModeUI();
 renderSwatches(usedColorsContainer, [], "No recolored output yet.");
