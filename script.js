@@ -527,6 +527,7 @@ async function applyPalettePreset(presetId) {
   activePresetId = preset.id;
   paletteInput.value = paletteToText(preset.colors);
   updatePalettePreview();
+  closePaletteLibrary();
   await handleAutoRecolorUpdate(
     `Preset "${preset.name}" loaded. Upload an image or click recolor when ready.`,
     `Preset "${preset.name}" loaded. Auto recolor is refreshing the preview...`
