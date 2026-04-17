@@ -19,6 +19,10 @@
         <input id="image-input" type="file" accept="image/*" hidden>
         <button id="upload-button" type="button" class="button button-primary">Upload image</button>
         <button id="recolor-button" type="button" class="button">Recolor image</button>
+        <label class="toolbar-toggle" for="auto-recolor">
+          <input id="auto-recolor" type="checkbox">
+          <span>Auto</span>
+        </label>
         <button id="download-button" type="button" class="button" disabled>Download edited image</button>
       </div>
       <p id="status-message" class="status-message" aria-live="polite">Ready. Edit the palette and load an image.</p>
@@ -54,9 +58,28 @@
           <h2>Palette input</h2>
           <p>Accepted separators: comma, space, or new line.</p>
         </div>
+        <input id="palette-file-input" type="file" accept=".hex,text/plain" hidden>
         <label class="sr-only" for="palette-input">Palette colors</label>
         <textarea id="palette-input" rows="8" spellcheck="false">ffffff, 000000</textarea>
         <p id="palette-feedback" class="helper-text" aria-live="polite">2 valid colors detected.</p>
+        <div class="preset-section">
+          <div class="preset-heading">
+            <div>
+              <h3>Suggested palettes</h3>
+              <p>Load a preset, import a `.hex`, then tweak it if needed.</p>
+            </div>
+            <div class="preset-actions">
+              <button id="import-palette-button" type="button" class="button">Import .hex</button>
+              <a
+                class="button button-link"
+                href="https://lospec.com/palette-list"
+                target="_blank"
+                rel="noreferrer"
+              >Lospec palettes</a>
+            </div>
+          </div>
+          <div id="palette-presets" class="preset-list" aria-label="Suggested palettes"></div>
+        </div>
       </article>
 
       <article class="control-block">
@@ -68,6 +91,7 @@
           <label class="field">
             <span class="field-label">Rendering mode</span>
             <select id="rendering-mode">
+              <option value="hybrid">Hybrid mode</option>
               <option value="nearest">Nearest color</option>
               <option value="bayer4">Ordered dithering Bayer 4x4</option>
               <option value="bayer8">Ordered dithering Bayer 8x8</option>
@@ -76,7 +100,6 @@
               <option value="luminance">Luminance ramp mapping</option>
               <option value="posterized">Posterized bands</option>
               <option value="block">Block / pixel mode</option>
-              <option value="hybrid">Hybrid mode</option>
             </select>
           </label>
 

@@ -1,9 +1,13 @@
 const imageInput = document.getElementById("image-input");
 const uploadButton = document.getElementById("upload-button");
 const recolorButton = document.getElementById("recolor-button");
+const autoRecolorCheckbox = document.getElementById("auto-recolor");
 const downloadButton = document.getElementById("download-button");
+const paletteFileInput = document.getElementById("palette-file-input");
+const importPaletteButton = document.getElementById("import-palette-button");
 const paletteInput = document.getElementById("palette-input");
 const paletteFeedback = document.getElementById("palette-feedback");
+const palettePresetsContainer = document.getElementById("palette-presets");
 const recognizedColorsContainer = document.getElementById("recognized-colors");
 const usedColorsContainer = document.getElementById("used-colors");
 const statusMessage = document.getElementById("status-message");
@@ -47,6 +51,59 @@ const BAYER_8X8 = [
   [34, 18, 46, 30, 33, 17, 45, 29],
   [10, 58, 6, 54, 9, 57, 5, 53],
   [42, 26, 38, 22, 41, 25, 37, 21],
+];
+
+const PALETTE_PRESETS = [
+  {
+    id: "onthehorizon",
+    name: "ONTHEHORIZON",
+    colors: ["#fcb24d", "#e46131", "#b01528", "#771046", "#3e0b66", "#1e1645", "#1e1b26"],
+  },
+  {
+    id: "oil-6",
+    name: "Oil 6",
+    colors: ["#fbf5ef", "#f2d3ab", "#c69fa5", "#8b6d9c", "#494d7e", "#272744"],
+  },
+  {
+    id: "twilight-5",
+    name: "Twilight 5",
+    colors: ["#fbbbad", "#ee8695", "#4a7a96", "#333f58", "#292831"],
+  },
+  {
+    id: "blessing",
+    name: "Blessing",
+    colors: ["#74569b", "#96fbc7", "#f7ffae", "#ffb3cb", "#d8bfd8"],
+  },
+  {
+    id: "mono",
+    name: "Noir & blanc",
+    colors: ["#ffffff", "#000000"],
+  },
+  {
+    id: "gameboy",
+    name: "Game Boy",
+    colors: ["#9bbc0f", "#8bac0f", "#306230", "#0f380f"],
+  },
+  {
+    id: "sunset",
+    name: "Sunset motel",
+    colors: ["#fff1d0", "#ffb067", "#e85d75", "#7b2d5f", "#2f1833"],
+  },
+  {
+    id: "candy",
+    name: "Candy pop",
+    colors: ["#fdf2ff", "#ff9bd2", "#ff5d8f", "#8f3b76", "#2d1e3f"],
+  },
+  {
+    id: "forest",
+    name: "Forest ink",
+    colors: ["#edf6d6", "#a4c585", "#5f8f62", "#2f5d50", "#132a23"],
+  },
+  {
+    id: "ocean",
+    name: "Deep ocean",
+    colors: ["#eaf7ff", "#8dd7f7", "#3b82b4", "#24506a", "#0f2230"],
+  },
 ];
 
 const RENDER_MODES = {
@@ -117,6 +174,7 @@ const RENDER_MODES = {
 
 let currentImage = null;
 let currentObjectUrl = null;
+let activePresetId = null;
 const viewerState = {
   isOpen: false,
   offsetX: 0,
@@ -205,6 +263,79 @@ function renderSwatches(container, colors, emptyMessage) {
   }
 }
 
+function paletteToText(colors) {
+  return colors.map((color) => color.replace("#", "")).join(", ");
+}
+
+function syncPresetSelection() {
+  if (!palettePresetsContainer) {
+    return;
+  }
+
+  for (const button of palettePresetsContainer.querySelectorAll(".preset-button")) {
+    button.classList.toggle("is-active", button.dataset.presetId === activePresetId);
+  }
+}
+
+function detectMatchingPreset(rawValue) {
+  const { validColors } = parsePaletteInput(rawValue);
+  const normalizedPalette = validColors.map((color) => color.hex).join(",");
+
+  if (!normalizedPalette) {
+    return null;
+  }
+
+  const matchedPreset = PALETTE_PRESETS.find((preset) => preset.colors.join(",") === normalizedPalette);
+  return matchedPreset ? matchedPreset.id : null;
+}
+
+function renderPalettePresets() {
+  if (!palettePresetsContainer) {
+    return;
+  }
+
+  palettePresetsContainer.textContent = "";
+
+  for (const preset of PALETTE_PRESETS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "button preset-button";
+    button.dataset.presetId = preset.id;
+
+    const meta = document.createElement("span");
+    meta.className = "preset-meta";
+
+    const name = document.createElement("span");
+    name.className = "preset-name";
+    name.textContent = preset.name;
+
+    const count = document.createElement("span");
+    count.className = "field-label";
+    count.textContent = `${preset.colors.length} colors`;
+
+    meta.append(name, count);
+
+    const colorRow = document.createElement("span");
+    colorRow.className = "preset-colors";
+
+    for (const color of preset.colors) {
+      const swatch = document.createElement("span");
+      swatch.className = "preset-swatch";
+      swatch.style.backgroundColor = color;
+      swatch.title = color;
+      colorRow.appendChild(swatch);
+    }
+
+    button.append(meta, colorRow);
+    button.addEventListener("click", () => {
+      applyPalettePreset(preset.id);
+    });
+    palettePresetsContainer.appendChild(button);
+  }
+
+  syncPresetSelection();
+}
+
 function sortPaletteByLuminance(colors) {
   return [...colors].sort((first, second) => first.luminance - second.luminance);
 }
@@ -229,6 +360,8 @@ function getPreviewPalette(colors) {
 function updatePalettePreview() {
   const { validColors, invalidEntries } = parsePaletteInput(paletteInput.value);
   const previewPalette = getPreviewPalette(validColors);
+  activePresetId = invalidEntries.length ? null : detectMatchingPreset(paletteInput.value);
+  syncPresetSelection();
 
   renderSwatches(
     recognizedColorsContainer,
@@ -253,6 +386,73 @@ function updatePalettePreview() {
   paletteFeedback.classList.toggle("is-error", invalidEntries.length > 0);
 
   return { validColors, invalidEntries };
+}
+
+async function applyPalettePreset(presetId) {
+  const preset = PALETTE_PRESETS.find((entry) => entry.id === presetId);
+
+  if (!preset) {
+    return;
+  }
+
+  activePresetId = preset.id;
+  paletteInput.value = paletteToText(preset.colors);
+  updatePalettePreview();
+  await handleAutoRecolorUpdate(
+    `Preset "${preset.name}" loaded. Upload an image or click recolor when ready.`,
+    `Preset "${preset.name}" loaded. Auto recolor is refreshing the preview...`
+  );
+}
+
+async function handleAutoRecolorUpdate(manualMessage, autoMessage) {
+  if (!currentImage) {
+    setStatus(manualMessage);
+    return;
+  }
+
+  if (!autoRecolorCheckbox.checked) {
+    setStatus(manualMessage);
+    return;
+  }
+
+  setStatus(autoMessage);
+  await recolorCurrentImage();
+}
+
+async function importPaletteFile(file) {
+  if (!file) {
+    return;
+  }
+
+  const isHexFile = file.name.toLowerCase().endsWith(".hex");
+
+  if (!isHexFile && file.type && !file.type.startsWith("text/")) {
+    setStatus("The selected file is not a valid .hex palette.", true);
+    return;
+  }
+
+  let rawText = "";
+
+  try {
+    rawText = await file.text();
+  } catch (error) {
+    setStatus("Unable to read this palette file.", true);
+    return;
+  }
+
+  const normalizedText = rawText
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
+
+  paletteInput.value = normalizedText;
+  updatePalettePreview();
+  await handleAutoRecolorUpdate(
+    `Palette imported from ${file.name}. Upload an image or click recolor when ready.`,
+    `Palette imported from ${file.name}. Auto recolor is refreshing the preview...`
+  );
 }
 
 function setStatus(message, isError = false) {
@@ -999,10 +1199,20 @@ uploadButton.addEventListener("click", () => {
   imageInput.click();
 });
 
+importPaletteButton.addEventListener("click", () => {
+  paletteFileInput.click();
+});
+
 imageInput.addEventListener("change", (event) => {
   const [file] = event.target.files || [];
   loadImageFromFile(file);
   imageInput.value = "";
+});
+
+paletteFileInput.addEventListener("change", (event) => {
+  const [file] = event.target.files || [];
+  importPaletteFile(file);
+  paletteFileInput.value = "";
 });
 
 recolorButton.addEventListener("click", () => {
@@ -1013,53 +1223,61 @@ downloadButton.addEventListener("click", downloadEditedImage);
 
 paletteInput.addEventListener("input", () => {
   updatePalettePreview();
-
-  if (!currentImage) {
-    return;
-  }
-
-  setStatus('Palette updated. Click "Recolor image" to apply the new colors and mode.');
+  handleAutoRecolorUpdate(
+    'Palette updated. Click "Recolor image" to apply the new colors and mode.',
+    "Palette updated. Auto recolor is applying the new colors and mode..."
+  );
 });
 
 renderingModeSelect.addEventListener("change", () => {
   updateModeUI();
-
-  if (!currentImage) {
-    setStatus("Rendering mode updated. Load an image or click recolor when ready.");
-    return;
-  }
-
-  setStatus('Rendering mode updated. Click "Recolor image" to apply it.');
+  handleAutoRecolorUpdate(
+    "Rendering mode updated. Load an image or click recolor when ready.",
+    "Rendering mode updated. Auto recolor is refreshing the preview..."
+  );
 });
 
 ditherStrengthInput.addEventListener("input", () => {
   updateControlValueLabels();
-
-  if (currentImage) {
-    setStatus('Dither strength updated. Click "Recolor image" to refresh the preview.');
-  }
+  handleAutoRecolorUpdate(
+    "Dither strength updated. Load an image or click recolor when ready.",
+    "Dither strength updated. Auto recolor is refreshing the preview..."
+  );
 });
 
 pixelSizeInput.addEventListener("input", () => {
   updateControlValueLabels();
-
-  if (currentImage) {
-    setStatus('Pixel size updated. Click "Recolor image" to refresh the preview.');
-  }
+  handleAutoRecolorUpdate(
+    "Pixel size updated. Load an image or click recolor when ready.",
+    "Pixel size updated. Auto recolor is refreshing the preview..."
+  );
 });
 
 sortPaletteCheckbox.addEventListener("change", () => {
   updatePalettePreview();
-
-  if (currentImage) {
-    setStatus('Palette ordering updated. Click "Recolor image" to apply it.');
-  }
+  handleAutoRecolorUpdate(
+    "Palette ordering updated. Load an image or click recolor when ready.",
+    "Palette ordering updated. Auto recolor is refreshing the preview..."
+  );
 });
 
 preserveTransparencyCheckbox.addEventListener("change", () => {
-  if (currentImage) {
-    setStatus('Transparency handling updated. Click "Recolor image" to apply it.');
+  handleAutoRecolorUpdate(
+    "Transparency handling updated. Load an image or click recolor when ready.",
+    "Transparency handling updated. Auto recolor is refreshing the preview..."
+  );
+});
+
+autoRecolorCheckbox.addEventListener("change", () => {
+  if (autoRecolorCheckbox.checked) {
+    handleAutoRecolorUpdate(
+      "Auto recolor enabled.",
+      "Auto recolor enabled. Refreshing preview..."
+    );
+    return;
   }
+
+  setStatus("Auto recolor disabled. Use Recolor image to refresh manually.");
 });
 
 viewerCloseButton.addEventListener("click", closeViewer);
@@ -1088,6 +1306,8 @@ window.addEventListener("keydown", (event) => {
 });
 
 updateControlValueLabels();
+renderingModeSelect.value = "hybrid";
+renderPalettePresets();
 updateModeUI();
 renderSwatches(usedColorsContainer, [], "No recolored output yet.");
 handlePreviewActivation(originalCanvas, "Original image");
