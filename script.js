@@ -1294,7 +1294,7 @@ async function recolorCurrentImage() {
   );
 
   setStatus(
-    `${mode.label} applied with ${renderContext.palette.length} palette color${renderContext.palette.length > 1 ? "s" : ""}. ${result.usedColors.length} color${result.usedColors.length > 1 ? "s are" : " is"} visible in the result.${invalidSummary}`
+    `Preview updated with ${mode.label.toLowerCase()}.${invalidSummary}`
   );
   setModeResultSummary(
     `${mode.label} applied with ${renderContext.palette.length} palette color${renderContext.palette.length > 1 ? "s" : ""}. ${result.usedColors.length} color${result.usedColors.length > 1 ? "s are" : " is"} visible in the result.`
